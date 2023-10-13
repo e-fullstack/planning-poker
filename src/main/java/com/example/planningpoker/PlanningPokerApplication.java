@@ -33,7 +33,7 @@ class PlanningPokerController {
 				.fromCallable(() -> UUID.fromString(roomId))
 				.map(roomRepository::roomById)
 				.doOnSuccess(room -> log.info("SUCCESS"))
-				.map(room -> "room")
+				.map(room -> "room2")
 				.doOnError(e -> log.error("ERROR {}", e.getMessage()))
 				.onErrorReturn("error");
 	}

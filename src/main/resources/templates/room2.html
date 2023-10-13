@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport"
+              content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <title>Room 2</title>
+        <style>
+            body {
+                margin-right: auto;
+                margin-left: auto;
+                width: 70%;
+            }
+            .container {
+                display: flex;
+                flex-direction: column;
+            }
+            div {
+                margin-top: 5px;
+            }
+
+            button.card {
+                margin-right: 10px;
+                height: 50px;
+                width: 50px;
+            }
+
+            div.admin button {
+                margin-right: 10px;
+                height: 50px;
+                width: 30%;
+            }
+
+            form input,select,button {
+                margin-top: 5px;
+                height: 50px;
+            }
+
+            footer {
+                text-align: center;
+                color: gray;
+                margin-top: 60px;
+            }
+        </style>
+    </head>
+    <body>
+        <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+        <div class="container" id="app">
+
+            <div id="room__form" v-if="!hasJoin">
+                <h3>Identify yourself in this room</h3>
+                <form @submit.prevent="joinRoom">
+                    <input type="text" v-model="name" placeholder="Participant Name"/>
+                    <br/>
+                    <select v-model="selected">
+                        <option disabled value="">Please select one</option>
+                        <option value="PARTICIPANT">Participant</option>
+                        <option value="OBSERVER">Observer</option>
+                    </select>
+                    <button id="join__button" type="submit">Join</button>
+                </form>
+            </div>
+            <div v-else>
+                <div id="message">{{ message }}</div>
+                <div id="cards">
+                    <button class="card" v-for="card in cards" @click="vote(card)">{{card}}</button>
+                    <p v-if="cardsError">{{cardsError}}</p>
+                </div>
+
+                <div v-if="isAdmin" class="admin">
+                    <hr/>
+                    <button @click="showVote">Show Vote</button>
+                    <button @click="clearVote">Clear Vote</button>
+                </div>
+                <hr/>
+                <div id="members">{{ members }}</div>
+            </div>
+
+            <hr/>
+            <footer>
+                <span>Ws Status: {{wsStatus}}</span>
+            </footer>
+        </div>
+
+        <script>
+            const roomId = location.pathname.split("/")[2]
+            console.log(roomId)
+            const { createApp, ref, onMounted, computed } = Vue
+            createApp({
+                setup() {
+                    const message = ref('Hello vue!')
+                    const cards = ref([])
+                    const cardsError = ref(null)
+
+                    const members = ref([])
+                    const name = ref("")
+                    const selected = ref("")
+                    const wsStatus = ref("UNKNOWN")
+                    const hasJoin = ref(false)
+                    // const isAdmin = computed(() => {
+                    //     return selected.value === "OBSERVER"
+                    // })
+                    const isAdmin = ref(false)
+                    let ws ;
+
+                    function joinRoom() {
+                        selected.value === "OBSERVER" ? isAdmin.value=true : isAdmin.value=false;
+                        const user = {id: name.value.toLowerCase().replace(/\s/g, ""), name: name.value, role: selected.value}
+                        fetch(`/room/${roomId}/member`,{
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({...user, status: true})
+                        })
+                            .then(r => {
+                                fetchCards()
+                                //sessionStorage.setItem("plan-poker-user", JSON.stringify(user));
+                                ws = new WebSocket(`ws://localhost:8080/ws/room/${roomId}`)
+                                ws.onopen = (e) => {
+                                    wsStatus.value = "Connected!"
+                                    ws.send(JSON.stringify({...user, event: 'JOIN'}));
+                                }
+                                ws.onmessage = (e) => {
+                                    members.value = JSON.parse(e.data);
+                                }
+                                ws.onclose = (e) => {
+                                    wsStatus.value = "Disconnected!"
+                                }
+                            })
+                            .catch(e => {})
+                            .finally(r => {
+                                hasJoin.value = true
+                            })
+                    }
+                    function fetchCards() {
+                        fetch(`/room/${roomId}/cards`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json' }
+                        })
+                            .then(res => res.json())
+                            .then(r => cards.value=r)
+                            .catch(e => cardsError.value = e.message)
+                    }
+
+
+                    function vote(e) {
+                        ws.send(JSON.stringify({event:'VOTE',vote: e}));
+                    }
+
+                    const showVote = () => {
+                        ws.send(JSON.stringify({event:'RESULT'}));
+                    }
+
+                    const clearVote = () => {
+                        ws.send(JSON.stringify({event:'RESET'}));
+                    }
+
+                    return {
+                        message,
+                        cards,cardsError,
+                        members,
+                        isAdmin,
+                        name,
+                        selected,
+                        wsStatus,
+                        hasJoin,
+                        joinRoom, vote, showVote, clearVote
+                    }
+                }
+            }).mount('#app')
+        </script>
+    </body>
+</html>
