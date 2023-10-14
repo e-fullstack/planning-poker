@@ -42,6 +42,19 @@
                 color: gray;
                 margin-top: 60px;
             }
+
+            table tbody tr td {
+                border-top: 1px solid gray;
+                border-bottom: 1px solid gray;
+            }
+
+            tr,td {
+                width: 80px;
+                height: 50px;
+            }
+            td {
+                text-align: center;
+            }
         </style>
     </head>
     <body>
@@ -74,7 +87,20 @@
                     <button @click="clearVote">Clear Vote</button>
                 </div>
                 <hr/>
-                <div id="members">{{ members }}</div>
+                <div id="members">
+                    <table>
+                        <tbody>
+                            <tr :id="member.id" v-for="member in members">
+                                <td>{{member.id}}</td>
+                                <td>{{member.name}}</td>
+                                <td>{{member.role}}</td>
+                                <td>{{member.vote}}</td>
+                                <td>{{member.status}}</td>
+                                <td>{{member.voted}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <hr/>
