@@ -5,7 +5,7 @@
         <meta name="viewport"
               content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
-        <title>Room 2</title>
+        <title>Room</title>
         <style>
             body {
                 margin-right: auto;
@@ -116,7 +116,7 @@
         <script>
             const roomId = location.pathname.split("/")[2]
             console.log(roomId)
-            const { createApp, ref, onMounted, computed } = Vue
+            const { createApp, ref, onMounted, computed , watch} = Vue
             createApp({
                 setup() {
                     const message = ref('Hello vue!')
@@ -133,6 +133,17 @@
                     const isAdmin = ref(false)
                     let ws ;
 
+                    watch(members, (m) => {
+                        document.title = `Room Count ${m.length}`
+                    })
+
+                    if(sessionStorage.getItem("plan-poker-user")) {
+                        const u = JSON.parse(sessionStorage.getItem("plan-poker-user"))
+                        name.value = u.name
+                        selected.value = u.role
+                        joinRoom()
+                    }
+
                     function joinRoom() {
                         selected.value === "OBSERVER" ? isAdmin.value=true : isAdmin.value=false;
                         const user = {id: name.value.toLowerCase().replace(/\s/g, ""), name: name.value, role: selected.value}
@@ -144,7 +155,7 @@
                             .then(r => {
                                 fetchCards()
                                 sessionStorage.setItem("plan-poker-user", JSON.stringify(user));
-                                ws = new WebSocket(`ws://localhost:8080/ws/room/${roomId}`)
+                                ws = new WebSocket(`ws://${location.host}/ws/room/${roomId}`)
                                 ws.onopen = (e) => {
                                     wsStatus.value = "Connected!"
                                     ws.send(JSON.stringify({...user, event: 'JOIN'}));
